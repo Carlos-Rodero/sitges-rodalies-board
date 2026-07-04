@@ -1,0 +1,11 @@
+.env
+__pycache__/
+*.pyc
+node_modules/
+backend/data/*.zip
+backend/data/*.txt
+backend/cache/
+logs/*.csv
+firmware/.pio/
+firmware/.vscode/
+.DS_Store
