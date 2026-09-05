@@ -9,3 +9,4 @@ logs/*.csv
 firmware/.pio/
 firmware/.vscode/
 .DS_Store
+logs/*.json

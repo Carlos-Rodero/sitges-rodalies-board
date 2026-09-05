@@ -1,0 +1,6 @@
+fastapi
+uvicorn
+requests
+tzdatabeautifulsoup4
+lxml
+python-dotenv
