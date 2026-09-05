@@ -6,6 +6,8 @@ PROJECT_ROOT = Path(__file__).resolve().parents[2]
 LOG_DIR = PROJECT_ROOT / "logs"
 
 MAX_PER_DIRECTION = 5
+WALK_TO_STATION_MIN = 10
+SAFETY_MARGIN_MIN = 3
 
 
 def find_latest_adif_json():
@@ -71,6 +73,64 @@ def simplify_observation(observation):
 
     return parts[0]
 
+def parse_departure_minutes_until(time_text, now=None):
+    if now is None:
+        now = datetime.now()
+
+    time_text = str(time_text).strip().lower()
+
+    if "min" in time_text:
+        number = "".join(ch for ch in time_text if ch.isdigit())
+        if number:
+            return int(number)
+        return None
+
+    try:
+        hour, minute = map(int, time_text.split(":"))
+    except ValueError:
+        return None
+
+    departure = now.replace(hour=hour, minute=minute, second=0, microsecond=0)
+
+    # If the departure time looks like it belongs to the next day, adjust it.
+    if departure < now:
+        diff_minutes = int((departure - now).total_seconds() / 60)
+        if diff_minutes < -60:
+            departure = departure.replace(day=departure.day + 1)
+
+    return int((departure - now).total_seconds() / 60)
+
+
+def format_leave_home(minutes_until, now=None):
+    if minutes_until is None:
+        return ""
+
+    if now is None:
+        now = datetime.now()
+
+    leave_in_min = minutes_until - WALK_TO_STATION_MIN - SAFETY_MARGIN_MIN
+
+    if leave_in_min <= 0:
+        return "salir ya"
+
+    from datetime import timedelta
+    leave_time = now.replace(second=0, microsecond=0)
+    leave_time = leave_time + timedelta(minutes=leave_in_min)
+
+    return f"salir {leave_time.strftime('%H:%M')}"
+
+
+def get_urgency(minutes_until):
+    if minutes_until is None:
+        return "unknown"
+
+    leave_in_min = minutes_until - WALK_TO_STATION_MIN - SAFETY_MARGIN_MIN
+
+    if leave_in_min <= 0:
+        return "now"
+    if leave_in_min <= 5:
+        return "soon"
+    return "ok"
 
 def build_board(adif_data):
     board = {
@@ -93,6 +153,7 @@ def build_board(adif_data):
     for row in adif_data.get("horarios", []):
         destination = row.get("estacion", "")
         direction = classify_direction(destination)
+        minutes_until = parse_departure_minutes_until(row.get("hora", ""))
 
         item = {
             "time": row.get("hora", ""),
@@ -103,6 +164,9 @@ def build_board(adif_data):
             "observation": simplify_observation(row.get("observation", "")),
             "immediate": row.get("immediate", False),
             "accessible": row.get("accesible", False),
+            "minutes_until": minutes_until,
+            "leave_home": format_leave_home(minutes_until),
+            "urgency": get_urgency(minutes_until)
         }
 
         if direction == "to_barcelona":
@@ -141,7 +205,7 @@ def print_board(board):
         obs = f" | {item['observation']}" if item["observation"] else ""
         print(
             f"  {item['time']:>6} | {item['destination']:<14} | "
-            f"{item['line']:<4} | vía {item['platform']}{obs}"
+            f"{item['line']:<4} | vía {item['platform']} | {item['leave_home']}{obs}"
         )
 
     print("")
@@ -152,7 +216,7 @@ def print_board(board):
         obs = f" | {item['observation']}" if item["observation"] else ""
         print(
             f"  {item['time']:>6} | {item['destination']:<14} | "
-            f"{item['line']:<4} | vía {item['platform']}{obs}"
+            f"{item['line']:<4} | vía {item['platform']} | {item['leave_home']}{obs}"
         )
 
     if board["unknown"]:
