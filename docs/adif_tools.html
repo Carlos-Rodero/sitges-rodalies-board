@@ -8,14 +8,20 @@
   <h1>Adif tools</h1>
 
   <p>
-    Arrastra este enlace a la barra de favoritos. Luego abre la página de Adif de Sitges
-    y pulsa el favorito.
+    Arrastra este enlace a la barra de favoritos. Luego abre la página de Adif de Sitges,
+    pulsa el favorito y fuerza una nueva consulta de horarios dentro de Adif.
   </p>
 
   <p>
-    <a href='javascript:(async()=>{try{const html=document.documentElement.innerHTML;const token=(window.Liferay&&window.Liferay.authToken)||((html.match(/p_p_auth=([^&"<>]+)/)||[])[1]);const asset=((html.match(/assetEntryId=([0-9]+)/)||[])[1])||"3106420";if(!token){alert("No encuentro p_p_auth en esta página");return;}const base=location.origin+location.pathname;const params=new URLSearchParams({"p_p_id":"servicios_estacion_ServiciosEstacionPortlet","p_p_lifecycle":"2","p_p_state":"normal","p_p_mode":"view","p_p_resource_id":"/consultarHorario","p_p_cacheability":"cacheLevelPage","assetEntryId":asset,"p_p_auth":token,"_servicios_estacion_ServiciosEstacionPortlet_searchType":"proximasSalidas","_servicios_estacion_ServiciosEstacionPortlet_trafficType":"cercanias","_servicios_estacion_ServiciosEstacionPortlet_numPage":"0","_servicios_estacion_ServiciosEstacionPortlet_commuterNetwork":"RODALIES_CATALUNYA","_servicios_estacion_ServiciosEstacionPortlet_stationCode":"71701"});const url=base+"?"+params.toString();const r=await fetch(url,{credentials:"include",headers:{"Accept":"application/json, text/plain, */*","X-Requested-With":"XMLHttpRequest"}});const txt=await r.text();await navigator.clipboard.writeText(txt);alert("Copiado JSON de Adif al portapapeles. Status: "+r.status+" Size: "+txt.length+" bytes");}catch(e){alert("Error: "+e.message);}})();'>
-      ADIF Sitges JSON
+    <a href='javascript:(()=>{try{if(!location.hostname.includes("adif.es")){alert("Abre primero la página de Adif de Sitges y pulsa este favorito allí.");return;}window.__adifCaptured=false;const save=async(txt,url)=>{try{console.log("ADIF captured from:",url,"size:",txt.length,"preview:",txt.slice(0,120));if(!txt||!txt.trim().startsWith("{"))return;if(txt.includes("\"error\":true")){console.warn("Adif returned error=true, ignoring replay/error response");return;}if(!txt.includes("\"horarios\""))return;if(window.__adifCaptured)return;window.__adifCaptured=true;localStorage.setItem("adif_last_json",txt);try{await navigator.clipboard.writeText(txt);alert("Copiado JSON real de Adif al portapapeles. Size: "+txt.length+" bytes");}catch(e){alert("JSON capturado en localStorage como adif_last_json. Mira la consola.");}}catch(e){console.error(e);}};const oldFetch=window.fetch;window.fetch=async function(...args){const res=await oldFetch.apply(this,args);try{const url=String(args[0]);if(url.includes("consultarHorario")){res.clone().text().then(t=>save(t,url));}}catch(e){console.error(e);}return res;};const oldOpen=XMLHttpRequest.prototype.open;const oldSend=XMLHttpRequest.prototype.send;XMLHttpRequest.prototype.open=function(method,url){this.__adif_url=String(url);return oldOpen.apply(this,arguments);};XMLHttpRequest.prototype.send=function(){this.addEventListener("load",function(){try{const url=String(this.__adif_url||"");if(url.includes("consultarHorario"))save(this.responseText,url);}catch(e){console.error(e);}});return oldSend.apply(this,arguments);};alert("Captura ADIF activada. Ahora cambia entre Llegadas/Salidas o fuerza una nueva consulta en la página de Adif.");}catch(e){alert("Error: "+e.message);}})();'>
+      Activar captura ADIF
     </a>
   </p>
+
+  <p>
+    Después de capturar, en la consola de Adif también puedes ejecutar:
+  </p>
+
+  <pre>localStorage.getItem("adif_last_json")</pre>
 </body>
 </html>
