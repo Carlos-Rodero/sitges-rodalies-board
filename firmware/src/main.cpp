@@ -1,5 +1,6 @@
 #include <Arduino.h>
 #include <WiFi.h>
+#include <WiFiClientSecure.h>
 #include <HTTPClient.h>
 #include <ArduinoJson.h>
 
@@ -36,12 +37,15 @@ void fetchBoard() {
     return;
   }
 
+  WiFiClientSecure client;
+  client.setInsecure();  // OK para prototipo: no validamos certificado
+
   HTTPClient http;
 
   Serial.print("Fetching: ");
   Serial.println(BOARD_URL);
 
-  http.begin(BOARD_URL);
+  http.begin(client, BOARD_URL);
   int httpCode = http.GET();
 
   Serial.print("HTTP code: ");

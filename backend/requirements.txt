@@ -1,6 +1,7 @@
 fastapi
 uvicorn
 requests
-tzdatabeautifulsoup4
+tzdata
+beautifulsoup4
 lxml
 python-dotenv
