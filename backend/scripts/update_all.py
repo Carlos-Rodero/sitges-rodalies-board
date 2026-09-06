@@ -9,6 +9,7 @@ SCRIPTS = [
     "build_train_positions.py",
     "build_enriched_board.py",
     "render_screen_mockup.py",
+    "build_esp32_payload.py",
 ]
 
 
@@ -46,6 +47,7 @@ def main():
     print("  logs/train_positions_latest.json")
     print("  logs/board_enriched_latest.json")
     print("  logs/screen_mockup.txt")
+    print("  logs/esp32_payload_latest.json")
 
 
 if __name__ == "__main__":
