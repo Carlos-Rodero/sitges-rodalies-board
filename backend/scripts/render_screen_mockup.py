@@ -1,35 +1,19 @@
 import json
 import textwrap
 from pathlib import Path
+from r2s_line import R2S_STATIONS
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 LOG_DIR = PROJECT_ROOT / "logs"
 
+ENRICHED_BOARD_JSON = LOG_DIR / "board_enriched_latest.json"
 BOARD_JSON = LOG_DIR / "board_latest.json"
 
 SCREEN_WIDTH = 104
 MAX_TRAINS_PER_DIRECTION = 3
 MAX_ALERT_LINES = 2
 
-R2S_STATIONS = [
-    ("SVC", "Sant Vicenç de Calders"),
-    ("CAL", "Calafell"),
-    ("SEG", "Segur de Calafell"),
-    ("CUN", "Cunit"),
-    ("CUB", "Cubelles"),
-    ("VNG", "Vilanova i la Geltrú"),
-    ("SIT", "Sitges"),
-    ("GAR", "Garraf"),
-    ("PCF", "Platja de Castelldefels"),
-    ("CDF", "Castelldefels"),
-    ("GAV", "Gavà"),
-    ("VLD", "Viladecans"),
-    ("ELP", "El Prat de Llobregat"),
-    ("BEL", "Bellvitge / Gornal"),
-    ("SAN", "Barcelona Sants"),
-    ("PGR", "Passeig de Gràcia"),
-    ("EDF", "Barcelona Estació de França"),
-]
+TRAIN_POSITIONS_JSON = LOG_DIR / "train_positions_latest.json"
 
 
 def short_text(text, max_len):
@@ -40,52 +24,205 @@ def short_text(text, max_len):
 
 
 def load_board():
-    if not BOARD_JSON.exists():
+    if ENRICHED_BOARD_JSON.exists():
+        path = ENRICHED_BOARD_JSON
+    elif BOARD_JSON.exists():
+        path = BOARD_JSON
+    else:
         raise FileNotFoundError(
-            f"{BOARD_JSON} not found. Run build_board_live.py first."
+            f"No board JSON found. Run build_board_live.py first."
         )
 
-    with BOARD_JSON.open("r", encoding="utf-8") as f:
+    with path.open("r", encoding="utf-8") as f:
         return json.load(f)
 
 
-def get_imminent_train_icons(board):
-    """
-    Returns train icons to display on the station line.
+def load_train_positions():
+    if not TRAIN_POSITIONS_JSON.exists():
+        return []
 
-    For now, without reliable vehicle positions, we only place trains at SIT
-    when they are imminent departures from Sitges.
-    Later, this will be replaced/enriched with Renfe vehicle_positions.
-    """
-    icons = {}
+    with TRAIN_POSITIONS_JSON.open("r", encoding="utf-8") as f:
+        return json.load(f)
 
-    sit_index = next(
-        i for i, (code, _name) in enumerate(R2S_STATIONS)
-        if code == "SIT"
+def get_sitges_station_index():
+    return next(
+        i for i, station in enumerate(R2S_STATIONS)
+        if station["code"] == "SIT"
     )
+
+
+def get_icon_start(line_index, icon, line_length):
+    if line_index is None:
+        return None
+
+    try:
+        line_index = float(line_index)
+    except (TypeError, ValueError):
+        return None
+
+    # Each station step occupies 6 characters:
+    # " ○ " + "───" = 6
+    start = round(line_index * 6)
+
+    # Keep icon inside the line
+    start = max(0, min(start, line_length - len(icon)))
+    return start
+
+
+def can_place_icon(line_chars, start, icon):
+    """
+    Avoid overlapping icons. We also leave 1 character of margin.
+    """
+    if start is None:
+        return False
+
+    check_start = max(0, start - 1)
+    check_end = min(len(line_chars), start + len(icon) + 1)
+
+    for pos in range(check_start, check_end):
+        if line_chars[pos] != " ":
+            return False
+
+    return True
+
+
+def place_icon(line_chars, start, icon):
+    for j, char in enumerate(icon):
+        pos = start + j
+        if 0 <= pos < len(line_chars):
+            line_chars[pos] = char
+
+
+def build_icon_lanes(trains, direction, marker_line_length, max_lanes=3):
+    """
+    Build several text rows for train icons so nearby trains do not overwrite
+    each other.
+    """
+    selected = [
+        train for train in trains
+        if train.get("direction") == direction
+    ]
+
+    selected.sort(
+        key=lambda train: (
+            999 if train.get("line_index") is None else float(train.get("line_index")),
+            train.get("trip_id", ""),
+        )
+    )
+
+    lanes = [
+        [" "] * marker_line_length
+        for _ in range(max_lanes)
+    ]
+
+    hidden_count = 0
+
+    for train in selected:
+        icon = train.get("icon", "[?]")
+        start = get_icon_start(train.get("line_index"), icon, marker_line_length)
+
+        placed = False
+        for lane in lanes:
+            if can_place_icon(lane, start, icon):
+                place_icon(lane, start, icon)
+                placed = True
+                break
+
+        if not placed:
+            hidden_count += 1
+
+    lane_strings = [
+        "".join(lane).rstrip()
+        for lane in lanes
+        if "".join(lane).strip()
+    ]
+
+    return lane_strings, hidden_count
+
+
+def build_unknown_icon_lanes(trains, marker_line_length, max_lanes=1):
+    selected = [
+        train for train in trains
+        if train.get("direction") not in ["to_barcelona", "to_south"]
+    ]
+
+    selected.sort(
+        key=lambda train: (
+            999 if train.get("line_index") is None else float(train.get("line_index")),
+            train.get("trip_id", ""),
+        )
+    )
+
+    lanes = [
+        [" "] * marker_line_length
+        for _ in range(max_lanes)
+    ]
+
+    hidden_count = 0
+
+    for train in selected:
+        icon = train.get("icon", "[?]")
+        start = get_icon_start(train.get("line_index"), icon, marker_line_length)
+
+        placed = False
+        for lane in lanes:
+            if can_place_icon(lane, start, icon):
+                place_icon(lane, start, icon)
+                placed = True
+                break
+
+        if not placed:
+            hidden_count += 1
+
+    lane_strings = [
+        "".join(lane).rstrip()
+        for lane in lanes
+        if "".join(lane).strip()
+    ]
+
+    return lane_strings, hidden_count
+
+
+def build_imminent_departure_icons(board):
+    """
+    Fallback: if Renfe train positions are unavailable, show only imminent
+    departures from Sitges based on Adif.
+    """
+    sit_index = get_sitges_station_index()
+
+    trains = []
 
     for item in board.get("to_barcelona", []):
         minutes_until = item.get("minutes_until")
         if minutes_until is not None and minutes_until <= 15:
-            icons[sit_index] = "[>]"
+            trains.append({
+                "icon": "[>]",
+                "direction": "to_barcelona",
+                "line_index": float(sit_index),
+                "trip_id": "adif_to_barcelona",
+            })
+            break
 
     for item in board.get("to_south", []):
         minutes_until = item.get("minutes_until")
         if minutes_until is not None and minutes_until <= 15:
-            icons[sit_index] = "[<]"
+            trains.append({
+                "icon": "[<]",
+                "direction": "to_south",
+                "line_index": float(sit_index),
+                "trip_id": "adif_to_south",
+            })
+            break
 
-    return icons
+    return trains
 
 
-def format_line_map(board):
-    # Full R2 Sud station mockup.
-    # ◎ marks Sitges, the station being queried.
-    # [>] train towards Barcelona.
-    # [<] train towards Vilanova / Sant Vicenç.
+def format_line_map(board, train_positions):
     marker_parts = []
     label_parts = []
 
-    for code, _name in R2S_STATIONS:
+    for station in R2S_STATIONS:
+        code = station["code"]
         marker = "◎" if code == "SIT" else "○"
         marker_parts.append(f"{marker:^3}")
         label_parts.append(f"{code:^3}")
@@ -93,34 +230,86 @@ def format_line_map(board):
     marker_line = "───".join(marker_parts)
     label_line = "   ".join(label_parts)
 
-    train_line_chars = [" "] * len(marker_line)
-    icons = get_imminent_train_icons(board)
+    if train_positions:
+        trains = train_positions
+        subtitle = "R2S Sant Vicenç → Sitges → Barcelona | posiciones Renfe"
+    else:
+        trains = build_imminent_departure_icons(board)
+        subtitle = "R2S Sant Vicenç → Sitges → Barcelona | salidas Adif"
 
-    for station_index, icon in icons.items():
-        # Each station cell starts every 6 characters:
-        # " ○ " + "───" = 6
-        start = station_index * 6
-        for j, char in enumerate(icon):
-            if start + j < len(train_line_chars):
-                train_line_chars[start + j] = char
+    line_length = len(marker_line)
 
-    train_line = "".join(train_line_chars).rstrip()
+    bcn_lanes, bcn_hidden = build_icon_lanes(
+        trains,
+        direction="to_barcelona",
+        marker_line_length=line_length,
+        max_lanes=3,
+    )
 
-    lines = [
-        "R2S Sant Vicenç → Sitges → Barcelona",
-    ]
+    south_lanes, south_hidden = build_icon_lanes(
+        trains,
+        direction="to_south",
+        marker_line_length=line_length,
+        max_lanes=3,
+    )
 
-    if train_line.strip():
-        lines.append(train_line)
+    unknown_lanes, unknown_hidden = build_unknown_icon_lanes(
+        trains,
+        marker_line_length=line_length,
+        max_lanes=1,
+    )
 
-    lines.extend([
-        marker_line,
-        label_line,
-        "[>] hacia Barcelona   [<] hacia Vilanova/Sant Vicenç",
-    ])
+    lines = [subtitle]
+
+    for lane in bcn_lanes:
+        lines.append(lane)
+
+    for lane in unknown_lanes:
+        lines.append(f"{lane}   ?")
+
+    lines.append(marker_line)
+    lines.append(label_line)
+
+    for lane in south_lanes:
+        lines.append(lane)
+
+    hidden_total = bcn_hidden + south_hidden + unknown_hidden
+    if hidden_total:
+        lines.append(f"{hidden_total} trenes no mostrados por solape")
+
+    lines.append("[>] tren hacia Barcelona   [<] tren hacia Vilanova/Sant Vicenç")
 
     return lines
 
+def format_position_status(item):
+    position_status = item.get("position_status", "")
+    train_location = item.get("train_location", "")
+    confidence = item.get("match_confidence", "")
+
+    if not position_status:
+        return ""
+
+    if position_status == "not_visible_yet":
+        return "sin posición"
+
+    if not train_location:
+        return ""
+
+    if confidence == "medium":
+        return f"estim. {train_location}"
+
+    return train_location
+
+def format_observation_short(item):
+    observation = str(item.get("observation", "")).lower()
+
+    if not observation:
+        return ""
+
+    if "platja de castelldefels" in observation:
+        return "sin PCF"
+
+    return "aviso"
 
 def format_train_row(item):
     time = short_text(item.get("time", ""), 5)
@@ -128,6 +317,8 @@ def format_train_row(item):
     line = short_text(item.get("line", ""), 4)
     platform = short_text(item.get("platform", ""), 2)
     leave_home = short_text(item.get("leave_home", ""), 12)
+    position = short_text(format_position_status(item), 18)
+    observation = short_text(format_observation_short(item), 8)
 
     urgency = item.get("urgency", "")
     if urgency == "now":
@@ -137,7 +328,18 @@ def format_train_row(item):
     else:
         marker = " "
 
-    return f"{marker} {time:<5} {destination:<14} {line:<4} v{platform:<2} {leave_home}"
+    row = (
+        f"{marker} {time:<5} {destination:<14} {line:<4} "
+        f"v{platform:<2} {leave_home:<12}"
+    )
+
+    if position:
+        row += f" {position}"
+
+    if observation:
+        row += f" {observation}"
+
+    return row
 
 
 def format_section(title, items):
@@ -174,7 +376,7 @@ def format_alerts(alerts):
     return lines
 
 
-def render_screen(board):
+def render_screen(board, train_positions):
     updated = board.get("updated", "")
     date = board.get("date", "")
 
@@ -191,7 +393,7 @@ def render_screen(board):
 
     lines.append("")
 
-    lines.extend(format_line_map(board))
+    lines.extend(format_line_map(board, train_positions))
 
     lines.append("")
     lines.extend(format_section("→ Barcelona", board.get("to_barcelona", [])))
@@ -199,17 +401,18 @@ def render_screen(board):
     lines.append("")
     lines.extend(format_section("← Vilanova / Sant Vicenç", board.get("to_south", [])))
 
-    alert_lines = format_alerts(board.get("alerts", []))
-    if alert_lines:
-        lines.append("")
-        lines.extend(alert_lines)
+    # alert_lines = format_alerts(board.get("alerts", []))
+    # if alert_lines:
+    #     lines.append("")
+    #     lines.extend(alert_lines)
 
     return "\n".join(lines)
 
 
 def main():
     board = load_board()
-    screen_text = render_screen(board)
+    train_positions = load_train_positions()
+    screen_text = render_screen(board, train_positions)
 
     print("")
     print("=" * SCREEN_WIDTH)

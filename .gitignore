@@ -10,3 +10,6 @@ firmware/.pio/
 firmware/.vscode/
 .DS_Store
 logs/*.json
+.venv/
+logs/*
+!logs/.gitkeep

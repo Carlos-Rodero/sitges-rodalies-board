@@ -77,6 +77,39 @@ def main():
     if adif_data is None:
         return
 
+    if adif_data.get("error") is True:
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        error_json_path = LOG_DIR / f"adif_live_error_json_{timestamp}.json"
+        error_json_path.write_text(
+            json.dumps(adif_data, indent=2, ensure_ascii=False),
+            encoding="utf-8"
+        )
+
+        print("")
+        print("Adif returned JSON with error=true.")
+        print("The browser session/token is probably expired or invalid.")
+        print(f"Saved error JSON to: {error_json_path}")
+        print("board_latest.json was NOT overwritten.")
+        print("Refresh the Adif page in Chrome and copy a new cURL.")
+        return
+
+    horarios = adif_data.get("horarios", [])
+
+    if not horarios:
+        empty_path = LOG_DIR / f"adif_live_empty_{timestamp}.json"
+        empty_path.write_text(
+            json.dumps(adif_data, indent=2, ensure_ascii=False),
+            encoding="utf-8"
+        )
+
+        print("")
+        print("Adif returned 200, but no departures were found.")
+        print("This is suspicious for Sitges during daytime.")
+        print(f"Saved empty Adif JSON to: {empty_path}")
+        print("board_latest.json was NOT overwritten.")
+        print("Refresh the Adif page in Chrome and copy a new cURL if this continues.")
+        return
+
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
 
     raw_json_path = LOG_DIR / f"adif_live_{timestamp}.json"
