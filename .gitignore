@@ -13,3 +13,4 @@ logs/*.json
 .venv/
 logs/*
 !logs/.gitkeep
+firmware/src/secrets.h
