@@ -3,5 +3,4 @@ uvicorn
 requests
 tzdata
 beautifulsoup4
-lxml
-python-dotenv
+playwright
