@@ -1,22 +1,15 @@
 import json
 from pathlib import Path
 
-PUBLIC_DIR = PROJECT_ROOT / "public"
-PUBLIC_OUTPUT_JSON = PUBLIC_DIR / "esp32_payload_latest.json"
-
-PUBLIC_DIR.mkdir(exist_ok=True)
-
-PUBLIC_OUTPUT_JSON.write_text(
-    json.dumps(payload, indent=2, ensure_ascii=False),
-    encoding="utf-8"
-)
-
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 LOG_DIR = PROJECT_ROOT / "logs"
+PUBLIC_DIR = PROJECT_ROOT / "docs"
 
 ENRICHED_BOARD_JSON = LOG_DIR / "board_enriched_latest.json"
 TRAIN_POSITIONS_JSON = LOG_DIR / "train_positions_latest.json"
+
 OUTPUT_JSON = LOG_DIR / "esp32_payload_latest.json"
+PUBLIC_OUTPUT_JSON = PUBLIC_DIR / "esp32_payload_latest.json"
 
 MAX_ROWS_PER_DIRECTION = 3
 MAX_TRAINS = 12
@@ -58,6 +51,7 @@ def compact_location(item):
 
     return short_text(text, 12)
 
+
 def compact_time(text):
     text = str(text or "").strip()
 
@@ -90,11 +84,11 @@ def is_valid_departure(item):
     time = str(item.get("time", "")).strip()
     leave_home = str(item.get("leave_home", "")).strip()
 
-    # Avoid sending broken/empty rows to the ESP32.
     if not time and not leave_home:
         return False
 
     return True
+
 
 def compact_departure(item):
     return [
@@ -148,6 +142,7 @@ def build_payload(board, trains):
             compact_train(train)
             for train in trains[:MAX_TRAINS]
             if train.get("line_index") is not None
+            and train.get("icon") in ("[>]", "[<]")
         ],
     }
 
@@ -170,7 +165,16 @@ def main():
 
     payload = build_payload(board, trains)
 
+    # Local development copy
     OUTPUT_JSON.write_text(
+        json.dumps(payload, indent=2, ensure_ascii=False),
+        encoding="utf-8"
+    )
+
+    # Public GitHub Pages copy
+    PUBLIC_DIR.mkdir(exist_ok=True)
+
+    PUBLIC_OUTPUT_JSON.write_text(
         json.dumps(payload, indent=2, ensure_ascii=False),
         encoding="utf-8"
     )
@@ -178,6 +182,7 @@ def main():
     compact_size = len(json.dumps(payload, ensure_ascii=False).encode("utf-8"))
 
     print(f"Saved ESP32 payload to: {OUTPUT_JSON}")
+    print(f"Saved public payload to: {PUBLIC_OUTPUT_JSON}")
     print(f"Payload size: {compact_size} bytes")
     print("")
     print(json.dumps(payload, indent=2, ensure_ascii=False))

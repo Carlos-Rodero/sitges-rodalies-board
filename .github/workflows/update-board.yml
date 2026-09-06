@@ -46,15 +46,15 @@ jobs:
           from datetime import datetime, timezone
           from pathlib import Path
 
-          public = Path("public")
-          public.mkdir(exist_ok=True)
+          docs = Path("docs")
+          docs.mkdir(exist_ok=True)
 
           status = {
               "generated_utc": datetime.now(timezone.utc).isoformat(),
-              "ok": Path("public/esp32_payload_latest.json").exists(),
+              "ok": Path("docs/esp32_payload_latest.json").exists(),
           }
 
-          Path("public/status.json").write_text(
+          Path("docs/status.json").write_text(
               json.dumps(status, indent=2),
               encoding="utf-8",
           )
@@ -65,7 +65,7 @@ jobs:
           git config user.name "github-actions"
           git config user.email "github-actions@github.com"
 
-          git add public/esp32_payload_latest.json public/status.json
+          git add docs/esp32_payload_latest.json docs/status.json
 
           git diff --cached --quiet || git commit -m "Update public Rodalies payload"
           git push

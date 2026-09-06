@@ -1,0 +1,106 @@
+{
+  "station": "Sitges",
+  "updated": "14:17",
+  "date": "domingo 06/09/2026",
+  "line": "R2S",
+  "stations": [
+    "SVC",
+    "CAL",
+    "SEG",
+    "CUN",
+    "CUB",
+    "VNG",
+    "SIT",
+    "GAR",
+    "PCF",
+    "CDF",
+    "GAV",
+    "VLD",
+    "ELP",
+    "BEL",
+    "SAN",
+    "PGR",
+    "EDF"
+  ],
+  "sitges_index": 6,
+  "to_bcn": [
+    [
+      "4m",
+      "Barcelona EdF",
+      "v2",
+      "ya",
+      "sin pos"
+    ],
+    [
+      "14:29",
+      "Barcelona EdF",
+      "v2",
+      "ya",
+      "sin pos"
+    ],
+    [
+      "14:45",
+      "Barcelona EdF",
+      "v2",
+      "14:31",
+      "sin pos"
+    ]
+  ],
+  "to_south": [
+    [
+      "5m",
+      "Vilanova",
+      "v1",
+      "ya",
+      "sin pos"
+    ],
+    [
+      "14:39",
+      "Sant Vicenç",
+      "v1",
+      "14:25",
+      "sin pos"
+    ],
+    [
+      "14:54",
+      "Vilanova",
+      "v1",
+      "14:40",
+      "sin pos"
+    ]
+  ],
+  "trains": [
+    [
+      6.0,
+      "<"
+    ],
+    [
+      5.5,
+      ">"
+    ],
+    [
+      4.85,
+      ">"
+    ],
+    [
+      7.5,
+      "<"
+    ],
+    [
+      8.85,
+      ">"
+    ],
+    [
+      10.0,
+      ">"
+    ],
+    [
+      13.5,
+      ">"
+    ],
+    [
+      14.0,
+      "<"
+    ]
+  ]
+}
