@@ -1,0 +1,21 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Adif tools</title>
+</head>
+<body>
+  <h1>Adif tools</h1>
+
+  <p>
+    Arrastra este enlace a la barra de favoritos. Luego abre la página de Adif de Sitges
+    y pulsa el favorito.
+  </p>
+
+  <p>
+    <a href='javascript:(async()=>{try{const html=document.documentElement.innerHTML;const token=(window.Liferay&&window.Liferay.authToken)||((html.match(/p_p_auth=([^&"<>]+)/)||[])[1]);const asset=((html.match(/assetEntryId=([0-9]+)/)||[])[1])||"3106420";if(!token){alert("No encuentro p_p_auth en esta página");return;}const base=location.origin+location.pathname;const params=new URLSearchParams({"p_p_id":"servicios_estacion_ServiciosEstacionPortlet","p_p_lifecycle":"2","p_p_state":"normal","p_p_mode":"view","p_p_resource_id":"/consultarHorario","p_p_cacheability":"cacheLevelPage","assetEntryId":asset,"p_p_auth":token,"_servicios_estacion_ServiciosEstacionPortlet_searchType":"proximasSalidas","_servicios_estacion_ServiciosEstacionPortlet_trafficType":"cercanias","_servicios_estacion_ServiciosEstacionPortlet_numPage":"0","_servicios_estacion_ServiciosEstacionPortlet_commuterNetwork":"RODALIES_CATALUNYA","_servicios_estacion_ServiciosEstacionPortlet_stationCode":"71701"});const url=base+"?"+params.toString();const r=await fetch(url,{credentials:"include",headers:{"Accept":"application/json, text/plain, */*","X-Requested-With":"XMLHttpRequest"}});const txt=await r.text();await navigator.clipboard.writeText(txt);alert("Copiado JSON de Adif al portapapeles. Status: "+r.status+" Size: "+txt.length+" bytes");}catch(e){alert("Error: "+e.message);}})();'>
+      ADIF Sitges JSON
+    </a>
+  </p>
+</body>
+</html>
