@@ -93,6 +93,14 @@ def main():
         print("Refresh the Adif page in Chrome and copy a new cURL.")
         return
 
+    if not adif_data or adif_data.get("error") is True:
+        print("Adif returned an error. Keeping previous board_latest.json.")
+        return
+
+    if not adif_data.get("horarios"):
+        print("Adif returned no horarios. Keeping previous board_latest.json.")
+        return
+
     horarios = adif_data.get("horarios", [])
 
     if not horarios:

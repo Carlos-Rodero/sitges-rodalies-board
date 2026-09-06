@@ -1,6 +1,16 @@
 import json
 from pathlib import Path
 
+PUBLIC_DIR = PROJECT_ROOT / "public"
+PUBLIC_OUTPUT_JSON = PUBLIC_DIR / "esp32_payload_latest.json"
+
+PUBLIC_DIR.mkdir(exist_ok=True)
+
+PUBLIC_OUTPUT_JSON.write_text(
+    json.dumps(payload, indent=2, ensure_ascii=False),
+    encoding="utf-8"
+)
+
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 LOG_DIR = PROJECT_ROOT / "logs"
 
@@ -48,13 +58,50 @@ def compact_location(item):
 
     return short_text(text, 12)
 
+def compact_time(text):
+    text = str(text or "").strip()
+
+    if not text:
+        return ""
+
+    if "min" in text:
+        number = text.split()[0]
+        return f"{number}m"
+
+    return short_text(text, 5)
+
+
+def compact_leave_home(text):
+    text = str(text or "").strip()
+
+    if not text:
+        return ""
+
+    if text == "salir ya":
+        return "ya"
+
+    if text.startswith("salir "):
+        return text.replace("salir ", "")
+
+    return short_text(text, 5)
+
+
+def is_valid_departure(item):
+    time = str(item.get("time", "")).strip()
+    leave_home = str(item.get("leave_home", "")).strip()
+
+    # Avoid sending broken/empty rows to the ESP32.
+    if not time and not leave_home:
+        return False
+
+    return True
 
 def compact_departure(item):
     return [
-        short_text(item.get("time", ""), 5),
+        compact_time(item.get("time", "")),
         short_text(item.get("destination", ""), 13),
         f"v{item.get('platform', '')}",
-        short_text(item.get("leave_home", ""), 10),
+        compact_leave_home(item.get("leave_home", "")),
         compact_location(item),
     ]
 
@@ -89,12 +136,14 @@ def build_payload(board, trains):
         "sitges_index": 6,
         "to_bcn": [
             compact_departure(item)
-            for item in board.get("to_barcelona", [])[:MAX_ROWS_PER_DIRECTION]
-        ],
+            for item in board.get("to_barcelona", [])
+            if is_valid_departure(item)
+        ][:MAX_ROWS_PER_DIRECTION],
         "to_south": [
             compact_departure(item)
-            for item in board.get("to_south", [])[:MAX_ROWS_PER_DIRECTION]
-        ],
+            for item in board.get("to_south", [])
+            if is_valid_departure(item)
+        ][:MAX_ROWS_PER_DIRECTION],
         "trains": [
             compact_train(train)
             for train in trains[:MAX_TRAINS]
